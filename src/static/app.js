@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const spotsLeft = details.max_participants - details.participants.length;
 
         const participantsList = details.participants.length > 0
-          ? details.participants.map(p => `<li>${p}</li>`).join("")
+          ? details.participants.map(p => `<li><span>${p}</span><button class="delete-btn" data-activity="${name}" data-email="${p}" aria-label="Delete ${p}">✕</button></li>`).join("")
           : "<li><em>No participants yet</em></li>";
 
         activityCard.innerHTML = `
@@ -44,6 +44,36 @@ document.addEventListener("DOMContentLoaded", () => {
         option.value = name;
         option.textContent = name;
         activitySelect.appendChild(option);
+      });
+
+      // Add event delegation for delete buttons
+      activitiesList.addEventListener("click", async (event) => {
+        if (event.target.classList.contains("delete-btn")) {
+          const email = event.target.dataset.email;
+          const activity = event.target.dataset.activity;
+
+          if (confirm(`Are you sure you want to unregister ${email} from ${activity}?`)) {
+            try {
+              const response = await fetch(
+                `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`,
+                {
+                  method: "DELETE",
+                }
+              );
+
+              if (response.ok) {
+                // Refresh activities after successful deletion
+                fetchActivities();
+              } else {
+                const result = await response.json();
+                alert(result.detail || "Failed to unregister participant");
+              }
+            } catch (error) {
+              alert("Failed to unregister participant. Please try again.");
+              console.error("Error unregistering:", error);
+            }
+          }
+        }
       });
     } catch (error) {
       activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
@@ -72,6 +102,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities after successful signup
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
